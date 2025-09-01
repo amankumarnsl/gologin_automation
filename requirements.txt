@@ -3,3 +3,12 @@ psutil
 webdriver_manager>=4.0.0
 selenium>=4.11.0
 sentry-sdk>=2.29.1
+
+# QR Code Processing
+qreader>=3.14
+Pillow>=10.0.0
+opencv-python>=4.8.0
+numpy>=1.24.0
+
+# Additional dependencies for automation
+# (base64, io, json, re, datetime, traceback are built-in Python modules)
