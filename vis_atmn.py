@@ -6,7 +6,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 import pyautogui
 
-def generate_human_like_path(start_x, start_y, end_x, end_y, steps=60):
+def generate_human_like_path(start_x, start_y, end_x, end_y, steps=20):
     """Generate a human-like path with dynamic zigzag and variable curves"""
     # Calculate distance and direction
     distance = math.sqrt((end_x - start_x)**2 + (end_y - start_y)**2)
@@ -33,15 +33,20 @@ def generate_human_like_path(start_x, start_y, end_x, end_y, steps=60):
         # Dynamic curve intensity - varies along the path
         if progress < 0.3:
             # Start with gentle curve
-            curve_intensity = math.sin(progress * math.pi / 0.3) * random.uniform(0.2, 0.4)
+            curve_intensity = math.sin(progress * math.pi / 0.3) * random.uniform(0.1, 0.6)
         elif progress > 0.7:
             # End with gentle curve
-            curve_intensity = math.sin((1 - progress) * math.pi / 0.3) * random.uniform(0.2, 0.4)
+            curve_intensity = math.sin((1 - progress) * math.pi / 0.3) * random.uniform(0.1, 0.6)
         else:
-            # Middle section - more dramatic curves
-            curve_intensity = math.sin((progress - 0.3) * math.pi / 0.4) * random.uniform(0.4, 0.8)
+            # Middle section - dramatic curve variations (sometimes very high, sometimes very low)
+            if random.random() < 0.4:  # 40% chance of very high curve
+                curve_intensity = random.uniform(0.8, 1.5)
+            elif random.random() < 0.3:  # 30% chance of very low curve
+                curve_intensity = random.uniform(0.05, 0.3)
+            else:  # 30% chance of medium curve
+                curve_intensity = random.uniform(0.4, 0.8)
         
-        curve_offset = distance * 0.2 * curve_intensity
+        curve_offset = distance * 0.25 * curve_intensity
         
         # Add some random variation
         random_variation = random.uniform(-0.3, 0.3)
@@ -90,7 +95,7 @@ def bezier_curve(control_points, t):
     
     return x, y
 
-def human_like_mouse_move(start_x, start_y, end_x, end_y, duration=7.0):
+def human_like_mouse_move(start_x, start_y, end_x, end_y, duration=0.5):
     """Move mouse with dynamic speed variations and natural pauses"""
     # Generate path with enhanced zigzag
     path_points = generate_human_like_path(start_x, start_y, end_x, end_y)
@@ -122,29 +127,27 @@ def human_like_mouse_move(start_x, start_y, end_x, end_y, duration=7.0):
             # Very slow, careful end
             timing_factor = 0.2 + 0.8 * ((1 - progress) / 0.2) ** 1.5
         
+        # Removed pauses for maximum speed
         # Add random human pauses at certain points
         if random.random() < 0.12:  # 12% chance of pause
-            pause_time = random.uniform(0.15, 0.6)
-            print(f"Human pause: {pause_time:.2f}s at point {i}")
+            pause_time = random.uniform(0.001, 0.005)  # Much shorter pauses
+            print(f"Human pause: {pause_time:.3f}s at point {i}")
             time.sleep(pause_time)
         
         # Add micro-pauses for more natural movement
         if random.random() < 0.25:  # 25% chance of micro-pause
-            micro_pause = random.uniform(0.05, 0.15)
+            micro_pause = random.uniform(0.001, 0.003)  # Much shorter micro-pauses
             time.sleep(micro_pause)
         
-        # Calculate movement delay with speed variations
-        base_delay = duration / total_points
-        actual_delay = base_delay * timing_factor * random.uniform(0.7, 1.4)
-        
-        # Move to point
+        # Maximum speed - no delays blocking movement
+        # Move to point immediately
         pyautogui.moveTo(x, y)
         
         # Print key points and show the dynamic movement
         if i % 8 == 0 or i == total_points - 1:
-            print(f"Point {i}: ({x}, {y}) - Speed: {1/actual_delay:.1f} pts/sec")
+            print(f"Point {i}: ({x}, {y}) - Maximum speed!")
         
-        time.sleep(actual_delay)
+        # No time.sleep() - maximum speed!
     
     print("✅ Dynamic mouse movement completed!")
     print("Movement had varying speeds, zigzag patterns, and natural pauses!")
