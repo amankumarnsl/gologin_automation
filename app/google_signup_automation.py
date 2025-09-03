@@ -12,9 +12,22 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import pyautogui
 
 from app.helper.daisysms_client import DaisySMSClient
 from app.helper.actions import HumanActions
+
+# Import the human_like_mouse_move function
+try:
+    from vis_atmn import human_like_mouse_move
+    print("✅ Successfully imported human_like_mouse_move from vis_atmn")
+except ImportError:
+    print("⚠️ Could not import human_like_mouse_move from vis_atmn")
+    # Fallback function if import fails
+    def human_like_mouse_move(start_x, start_y, end_x, end_y, duration=1.0):
+        print(f"🔄 Fallback: Moving mouse from ({start_x}, {start_y}) to ({end_x}, {end_y})")
+        pyautogui.moveTo(end_x, end_y, duration=duration)
+        print("✅ Mouse movement completed (fallback)")
 
 
 class GoogleSignupAutomation:
@@ -153,68 +166,148 @@ class GoogleSignupAutomation:
             print(f"⚠️ Session context update failed: {e}")
 
     def go_to_google(self):
-        """Navigate to Google using search-based approach"""
-        print("🌐 Navigating to Google...")
+        """Navigate to Google using search-based approach with mouse movement"""
+        print("🚨 DEBUG: go_to_google method called!")
+        print("🌐 Starting Google navigation process...")
         
-        # Navigate to Google homepage
-        self.driver.get('https://www.google.com/')
-        self.actions.wait_for_page_load()
+        # Step 1: Initialize mouse position
+        print("🖱️ Initializing mouse position...")
+        current_x, current_y = pyautogui.position()
+        print(f"📍 Current mouse position: ({current_x}, {current_y})")
         
-        # Handle consent dialogs
+        # Step 2: Wait randomly for 3-5 seconds FIRST
+        wait_time = random.uniform(3.0, 5.0)
+        print(f"⏳ Waiting {wait_time:.1f} seconds FIRST before opening browser...")
+        time.sleep(wait_time)
+        
+        # Step 3: Open browser and navigate to Google
+        print("🌐 Opening browser and navigating to Google...")
         try:
-            consent_btn = self.actions.find_element(By.XPATH, "//button[div[contains(text(),'Accept all')]]", timeout=5)
-            if consent_btn:
-                print("👆 Clicking consent button...")
-                self.actions.tap(consent_btn)
-        except:
+            self.driver.get("https://www.google.com")
+            time.sleep(2.0)
+            print("✅ Browser opened and navigated to Google.com")
+        except Exception as e:
+            print(f"⚠️ Browser navigation failed: {e}")
+            return
+        
+        # Step 4: Find the search bar
+        print("🔍 Looking for search bar element...")
+        search_bar = None
+        
+        # Try multiple approaches to find the search bar
+        search_approaches = [
+            ('CSS_SELECTOR', 'textarea[name="q"]'),
+            ('CSS_SELECTOR', 'input[name="q"]'),
+            ('CSS_SELECTOR', 'textarea[aria-label="Google Search"]'),
+            ('XPATH', '//textarea[@name="q"]'),
+            ('XPATH', '//input[@name="q"]')
+        ]
+        
+        for i, (by_type, selector) in enumerate(search_approaches):
             try:
-                consent_btn_alt = self.actions.find_element(By.XPATH, "//button[contains(.,'I agree')]", timeout=5)
-                if consent_btn_alt:
-                    print("👆 Clicking I agree button...")
-                    self.actions.tap(consent_btn_alt)
-            except:
-                print("ℹ️  No consent dialog found")
-
+                print(f"🔍 Trying approach {i+1}: {by_type} = {selector}")
+                if by_type == 'CSS_SELECTOR':
+                    search_bar = self.driver.find_element(By.CSS_SELECTOR, selector)
+                elif by_type == 'XPATH':
+                    search_bar = self.driver.find_element(By.XPATH, selector)
+                
+                if search_bar:
+                    print(f"✅ Found search bar using: {by_type} = {selector}")
+                    break
+            except Exception as e:
+                print(f"❌ Approach {i+1} failed: {e}")
+                continue
+        
+        if not search_bar:
+            print("❌ Could not find search bar with any approach")
+            print("🚨 BREAK CONDITION: Search bar not found!")
+            return
+        
+        # Step 5: Move mouse to search bar with human-like movement
+        print("🖱️ Moving mouse to search bar with human-like movement...")
         try:
-            # Search for "Create google account"
-            print("🔍 Searching for 'Create google account'...")
-            search_input = self.actions.find_element(By.NAME, "q")
+            # Get search bar coordinates
+            search_bar_rect = self.driver.execute_script("""
+                let el = arguments[0];
+                let r = el.getBoundingClientRect();
+                return {
+                    abs_x: r.left + window.screenX + (window.outerWidth - window.innerWidth),
+                    abs_y: r.top + window.screenY + (window.outerHeight - window.innerHeight),
+                    width: r.width,
+                    height: r.height
+                };
+            """, search_bar)
             
-            print("👆 Activating search box...")
-            self.actions.tap(search_input)
-            time.sleep(random.uniform(0.3, 0.7))
+            if not search_bar_rect:
+                print("❌ Could not get search bar coordinates!")
+                return
             
-            print("⌨️ Typing search query...")
-            self.actions.typing(search_input, "Create google account")
+            print(f"🔍 Raw coordinates: {search_bar_rect}")
             
-            # Click search button or use Enter key
-            print("👆 Clicking search button...")
-            try:
-                search_button = self.actions.find_element(By.XPATH, "//input[@name='btnK'] | //button[@name='btnK']")
-                self.actions.tap(search_button)
-            except:
-                print("⌨️ Using Enter key instead...")
-                search_input.send_keys(Keys.RETURN)
+            # Get random coordinates within search bar (not center)
+            target_x = search_bar_rect["abs_x"] + random.randint(5, max(6, int(search_bar_rect["width"]) - 5))
+            target_y = search_bar_rect["abs_y"] + random.randint(5, max(6, int(search_bar_rect["height"]) - 5))
             
-            time.sleep(random.uniform(5, 10))
-
-            # Find and click the signup link
+            print(f"📍 Moving from ({current_x}, {current_y}) to search bar at ({target_x}, {target_y})")
+            print(f"📍 Search bar dimensions: {search_bar_rect['width']} x {search_bar_rect['height']}")
+            
+            # Move mouse with human-like movement
+            human_like_mouse_move(current_x, current_y, target_x, target_y, duration=2.0)
+            
+            print("✅ Mouse moved to search bar with human-like movement!")
+            
+        except Exception as e:
+            print(f"❌ Mouse movement failed: {e}")
+            print("🚨 BREAK CONDITION: Mouse movement failed!")
+            return
+        
+        # Step 6: Click and type using the WORKING approach from reference code
+        print("👆 Clicking on search bar and typing 'Create google account'...")
+        try:
+            # Click on search bar to focus it
+            pyautogui.click()
+            time.sleep(0.5)
+            
+            # Clear any existing text
+            pyautogui.hotkey('ctrl', 'a')  # Select all
+            time.sleep(0.2)
+            pyautogui.press('delete')  # Clear
+            time.sleep(0.2)
+            
+            # Type "Create google account" using the WORKING method from reference code
+            print("⌨️ Typing: Create google account")
+            self.actions.typing(search_bar, "Create google account")
+            time.sleep(0.5)
+            
+            # Hit Enter to search
+            print("⌨️ Hitting Enter key to search...")
+            search_bar.send_keys(Keys.RETURN)
+            
+            print("✅ Successfully typed 'Create google account' and hit Enter!")
+            time.sleep(random.uniform(3.0, 5.0))  # Wait for search results
+            
+            # Step 7: Find and click the signup link (using your exact code)
             print("🔗 Looking for signup link...")
             signup_link = self.actions.find_element(By.XPATH, "//a[starts-with(@href, 'https://accounts.google.com/')]")
             
             print("👆 Clicking signup link...")
             self.actions.tap(signup_link)
             
-            time.sleep(random.uniform(2, 4)) 
-
-            # Wait for page to fully load
-            time.sleep(random.uniform(2, 3))
+            time.sleep(random.uniform(3.0, 5.0))  # Wait for page load
             
-            # 🌍 SELECT ENGLISH LANGUAGE FIRST
-            print("🌍 Selecting English language on Create Account page...")
-            self.select_english_language_direct()
+            # Step 8: Handle language selection (NO MOUSE MOVEMENT, DIRECT SELECTION)
+            print("🌍 Handling language selection on signup page...")
+            try:
+                self.select_english_language_direct()
+                print("✅ Language selection completed!")
+            except Exception as e:
+                print(f"⚠️ Language selection failed: {e}")
             
-            # Now look for Create account button
+            # Step 9: Wait for page to fully load after language selection
+            print("⏳ Waiting for page to fully load after language selection...")
+            time.sleep(random.uniform(2.0, 3.0))  # Give page time to update
+            
+            # Step 10: Look for Create account button using your working approach
             print("👆 Looking for 'Create account' button...")
             create_account_selectors = [
                 "//span[normalize-space()='Create account']",
@@ -234,7 +327,7 @@ class GoogleSignupAutomation:
                     print(f"✅ Found Create account button using selector {i+1}")
                     break
                 except:
-                    print(f"⚠️  Create account selector {i+1} failed")
+                    print(f"⚠️ Create account selector {i+1} failed")
                     continue
             
             if not create_account_btn:
@@ -242,18 +335,76 @@ class GoogleSignupAutomation:
                 self.actions.take_screenshot("create_account_button_not_found.png")
                 raise Exception("Create account button not found with any selector")
             
-            # Click Create Account button
-            print("👆 Clicking Create account button...")
-            self.actions.tap(create_account_btn)
+            # Click Create Account button with human-like mouse movement (KEEP THIS)
+            print("👆 Clicking Create account button with human-like mouse movement...")
+            try:
+                # Get button coordinates and click with mouse movement
+                button_rect = self.driver.execute_script("""
+                    let el = arguments[0];
+                    let r = el.getBoundingClientRect();
+                    return {
+                        abs_x: r.left + window.screenX + (window.outerWidth - window.innerWidth),
+                        abs_y: r.top + window.screenY + (window.outerHeight - window.innerHeight),
+                        width: r.width,
+                        height: r.height
+                    };
+                """, create_account_btn)
+                
+                # Get random coordinates within button
+                button_x = button_rect["abs_x"] + random.randint(5, int(button_rect["width"]) - 5)
+                button_y = button_rect["abs_y"] + random.randint(5, int(button_rect["height"]) - 5)
+                
+                # Move mouse with human-like movement and click
+                current_x, current_y = pyautogui.position()
+                human_like_mouse_move(current_x, current_y, button_x, button_y, duration=1.5)
+                pyautogui.click()
+                
+                print("✅ Create account button clicked with mouse movement!")
+            except Exception as e:
+                print(f"⚠️ Mouse movement failed, using fallback: {e}")
+                self.actions.tap(create_account_btn)
+                print("✅ Create account button clicked via fallback!")
+                
+            time.sleep(random.uniform(1.0, 2.0))  # Wait for page transition
 
-            time.sleep(random.uniform(1, 2))
-
-            # Click "For my personal use"
+            # Step 11: Click "For my personal use" (KEEP MOUSE MOVEMENT for this)
             print("👆 Looking for 'For my personal use' option...")
-            personal_use_option = self.actions.find_element(By.XPATH, "//span[normalize-space()='For my personal use']")
+            try:
+                personal_use_option = self.driver.find_element(By.XPATH, "//span[normalize-space()='For my personal use']")
+                print("👆 Clicking personal use option with human-like mouse movement...")
+                
+                # Get coordinates and click with mouse movement
+                button_rect = self.driver.execute_script("""
+                    let el = arguments[0];
+                    let r = el.getBoundingClientRect();
+                    return {
+                        abs_x: r.left + window.screenX + (window.outerWidth - window.innerWidth),
+                        abs_y: r.top + window.screenY + (window.outerHeight - window.innerHeight),
+                        width: r.width,
+                        height: r.height
+                    };
+                """, personal_use_option)
+                
+                # Get random coordinates within button
+                button_x = button_rect["abs_x"] + random.randint(5, int(button_rect["width"]) - 5)
+                button_y = button_rect["abs_y"] + random.randint(5, int(button_rect["height"]) - 5)
+                
+                # Move mouse with human-like movement and click
+                current_x, current_y = pyautogui.position()
+                human_like_mouse_move(current_x, current_y, button_x, button_y, duration=1.5)
+                pyautogui.click()
+                
+                print("✅ Personal use option clicked with mouse movement!")
+            except Exception as e:
+                print(f"⚠️ Personal use option not found: {e}")
             
-            print("👆 Clicking personal use option...")
-            self.actions.tap(personal_use_option)
+            print("✅ Google navigation and initial setup completed successfully!")
+            print("🎯 Ready for form filling with mouse movement for buttons, direct selection for dropdowns!")
+            
+        except Exception as e:
+            print(f"❌ Navigation failed: {e}")
+            print("🚨 BREAK CONDITION: Navigation failed!")
+            return
 
         except Exception as e:
             print(f"⚠️  Search-based navigation failed: {e}")
@@ -296,9 +447,48 @@ class GoogleSignupAutomation:
                 print("⚠️ Language dropdown not found, continuing without language change")
                 return False
             
-            # Step 2: Click language dropdown
+            # Step 2: Click language dropdown with mouse movement
             print("👆 Clicking language dropdown to open...")
-            self.actions.tap(language_trigger)
+            
+            # First, move mouse to the language button with human-like movement
+            try:
+                print("🖱️ Moving mouse to language button with human-like movement...")
+                
+                # Get button coordinates
+                button_rect = self.driver.execute_script("""
+                    let el = arguments[0];
+                    let r = el.getBoundingClientRect();
+                    return {
+                        abs_x: r.left + window.screenX + (window.outerWidth - window.innerWidth),
+                        abs_y: r.top + window.screenY + (window.outerHeight - window.innerHeight),
+                        width: r.width,
+                        height: r.height
+                    };
+                """, language_trigger)
+                
+                if button_rect:
+                    # Get random coordinates within button
+                    button_x = button_rect["abs_x"] + random.randint(5, max(6, int(button_rect["width"]) - 5))
+                    button_y = button_rect["abs_y"] + random.randint(5, max(6, int(button_rect["height"]) - 5))
+                    
+                    # Get current mouse position
+                    current_x, current_y = pyautogui.position()
+                    print(f"📍 Moving from ({current_x}, {current_y}) to language button at ({button_x}, {button_y})")
+                    
+                    # Move mouse with human-like movement
+                    human_like_mouse_move(current_x, current_y, button_x, button_y, duration=1.5)
+                    
+                    # Click on the button
+                    pyautogui.click()
+                    print("✅ Language button clicked with mouse movement!")
+                else:
+                    print("⚠️ Could not get button coordinates, using fallback...")
+                    self.actions.tap(language_trigger)
+                    
+            except Exception as e:
+                print(f"⚠️ Mouse movement failed, using fallback: {e}")
+                self.actions.tap(language_trigger)
+            
             time.sleep(random.uniform(2, 3))  # Wait for dropdown to open
             
             # Step 3: Select English option
@@ -397,7 +587,46 @@ class GoogleSignupAutomation:
             # Fill first name
             print(f"👆 STEP 1: Activating first name field...")
             first_name_input = self.actions.find_element(By.NAME, "firstName")
-            self.actions.tap(first_name_input)
+            
+            # Move mouse to first name field with human-like movement
+            try:
+                print("🖱️ Moving mouse to first name field with human-like movement...")
+                
+                # Get field coordinates
+                field_rect = self.driver.execute_script("""
+                    let el = arguments[0];
+                    let r = el.getBoundingClientRect();
+                    return {
+                        abs_x: r.left + window.screenX + (window.outerWidth - window.innerWidth),
+                        abs_y: r.top + window.screenY + (window.outerHeight - window.innerHeight),
+                        width: r.width,
+                        height: r.height
+                    };
+                """, first_name_input)
+                
+                if field_rect:
+                    # Get random coordinates within field
+                    field_x = field_rect["abs_x"] + random.randint(5, max(6, int(field_rect["width"]) - 5))
+                    field_y = field_rect["abs_y"] + random.randint(5, max(6, int(field_rect["height"]) - 5))
+                    
+                    # Get current mouse position
+                    current_x, current_y = pyautogui.position()
+                    print(f"📍 Moving from ({current_x}, {current_y}) to first name field at ({field_x}, {field_y})")
+                    
+                    # Move mouse with human-like movement
+                    human_like_mouse_move(current_x, current_y, field_x, field_y, duration=1.5)
+                    
+                    # Click on the field
+                    pyautogui.click()
+                    print("✅ First name field clicked with mouse movement!")
+                else:
+                    print("⚠️ Could not get field coordinates, using fallback...")
+                    self.actions.tap(first_name_input)
+                    
+            except Exception as e:
+                print(f"⚠️ Mouse movement failed, using fallback: {e}")
+                self.actions.tap(first_name_input)
+            
             time.sleep(random.uniform(0.3, 0.7))
             
             print(f"⌨️ STEP 2: Typing first name...")
@@ -407,7 +636,46 @@ class GoogleSignupAutomation:
             # Fill last name
             print(f"👆 STEP 3: Activating last name field...")
             last_name_input = self.actions.find_element(By.NAME, "lastName")
-            self.actions.tap(last_name_input)
+            
+            # Move mouse to last name field with human-like movement
+            try:
+                print("🖱️ Moving mouse to last name field with human-like movement...")
+                
+                # Get field coordinates
+                field_rect = self.driver.execute_script("""
+                    let el = arguments[0];
+                    let r = el.getBoundingClientRect();
+                    return {
+                        abs_x: r.left + window.screenX + (window.outerWidth - window.innerWidth),
+                        abs_y: r.top + window.screenY + (window.outerHeight - window.innerHeight),
+                        width: r.width,
+                        height: r.height
+                    };
+                """, last_name_input)
+                
+                if field_rect:
+                    # Get random coordinates within field
+                    field_x = field_rect["abs_x"] + random.randint(5, max(6, int(field_rect["width"]) - 5))
+                    field_y = field_rect["abs_y"] + random.randint(5, max(6, int(field_rect["height"]) - 5))
+                    
+                    # Get current mouse position
+                    current_x, current_y = pyautogui.position()
+                    print(f"📍 Moving from ({current_x}, {current_y}) to last name field at ({field_x}, {field_y})")
+                    
+                    # Move mouse with human-like movement
+                    human_like_mouse_move(current_x, current_y, field_x, field_y, duration=1.5)
+                    
+                    # Click on the field
+                    pyautogui.click()
+                    print("✅ Last name field clicked with mouse movement!")
+                else:
+                    print("⚠️ Could not get field coordinates, using fallback...")
+                    self.actions.tap(last_name_input)
+                    
+            except Exception as e:
+                print(f"⚠️ Mouse movement failed, using fallback: {e}")
+                self.actions.tap(last_name_input)
+            
             time.sleep(random.uniform(0.3, 0.7))
             
             print(f"⌨️ STEP 4: Typing last name...")
@@ -422,9 +690,37 @@ class GoogleSignupAutomation:
             )
             
             if next_button:
-                print("🎯 STEP 6: Next button found! Clicking...")
-                self.actions.tap(next_button)
-                print("✅ Next button clicked, waiting for page transition...")
+                print("🎯 STEP 6: Next button found! Clicking with mouse movement...")
+                
+                # Click Next button with human-like mouse movement
+                try:
+                    # Get button coordinates and click with mouse movement
+                    button_rect = self.driver.execute_script("""
+                        let el = arguments[0];
+                        let r = el.getBoundingClientRect();
+                        return {
+                            abs_x: r.left + window.screenX + (window.outerWidth - window.innerWidth),
+                            abs_y: r.top + window.screenY + (window.outerHeight - window.innerHeight),
+                            width: r.width,
+                            height: r.height
+                        };
+                    """, next_button)
+                    
+                    # Get random coordinates within button
+                    button_x = button_rect["abs_x"] + random.randint(5, int(button_rect["width"]) - 5)
+                    button_y = button_rect["abs_y"] + random.randint(5, int(button_rect["height"]) - 5)
+                    
+                    # Move mouse with human-like movement and click
+                    current_x, current_y = pyautogui.position()
+                    human_like_mouse_move(current_x, current_y, button_x, button_y, duration=1.5)
+                    pyautogui.click()
+                    
+                    print("✅ Next button clicked with mouse movement!")
+                except Exception as e:
+                    print(f"⚠️ Mouse movement failed, using fallback: {e}")
+                    self.actions.tap(next_button)
+                    print("✅ Next button clicked via fallback!")
+                
                 time.sleep(random.uniform(1.5, 2.5))
                 print("✅ Name filled and submitted")
                 
@@ -468,7 +764,46 @@ class GoogleSignupAutomation:
             # Fill day
             print(f"👆 STEP 2: Activating day field...")
             day_input = self.actions.find_element(By.NAME, "day")
-            self.actions.tap(day_input)
+            
+            # Move mouse to day field with human-like movement
+            try:
+                print("🖱️ Moving mouse to day field with human-like movement...")
+                
+                # Get field coordinates
+                field_rect = self.driver.execute_script("""
+                    let el = arguments[0];
+                    let r = el.getBoundingClientRect();
+                    return {
+                        abs_x: r.left + window.screenX + (window.outerWidth - window.innerWidth),
+                        abs_y: r.top + window.screenY + (window.outerHeight - window.innerHeight),
+                        width: r.width,
+                        height: r.height
+                    };
+                """, day_input)
+                
+                if field_rect:
+                    # Get random coordinates within field
+                    field_x = field_rect["abs_x"] + random.randint(5, max(6, int(field_rect["width"]) - 5))
+                    field_y = field_rect["abs_y"] + random.randint(5, max(6, int(field_rect["height"]) - 5))
+                    
+                    # Get current mouse position
+                    current_x, current_y = pyautogui.position()
+                    print(f"📍 Moving from ({current_x}, {current_y}) to day field at ({field_x}, {field_y})")
+                    
+                    # Move mouse with human-like movement
+                    human_like_mouse_move(current_x, current_y, field_x, field_y, duration=1.5)
+                    
+                    # Click on the field
+                    pyautogui.click()
+                    print("✅ Day field clicked with mouse movement!")
+                else:
+                    print("⚠️ Could not get field coordinates, using fallback...")
+                    self.actions.tap(day_input)
+                    
+            except Exception as e:
+                print(f"⚠️ Mouse movement failed, using fallback: {e}")
+                self.actions.tap(day_input)
+            
             time.sleep(random.uniform(0.3, 0.7))
             
             print(f"⌨️ STEP 3: Typing day...")
@@ -478,7 +813,46 @@ class GoogleSignupAutomation:
             # Fill year
             print(f"👆 STEP 4: Activating year field...")
             year_input = self.actions.find_element(By.NAME, "year")
-            self.actions.tap(year_input)
+            
+            # Move mouse to year field with human-like movement
+            try:
+                print("🖱️ Moving mouse to year field with human-like movement...")
+                
+                # Get field coordinates
+                field_rect = self.driver.execute_script("""
+                    let el = arguments[0];
+                    let r = el.getBoundingClientRect();
+                    return {
+                        abs_x: r.left + window.screenX + (window.outerWidth - window.innerWidth),
+                        abs_y: r.top + window.screenY + (window.outerHeight - window.innerHeight),
+                        width: r.width,
+                        height: r.height
+                    };
+                """, year_input)
+                
+                if field_rect:
+                    # Get random coordinates within field
+                    field_x = field_rect["abs_x"] + random.randint(5, max(6, int(field_rect["width"]) - 5))
+                    field_y = field_rect["abs_y"] + random.randint(5, max(6, int(field_rect["height"]) - 5))
+                    
+                    # Get current mouse position
+                    current_x, current_y = pyautogui.position()
+                    print(f"📍 Moving from ({current_x}, {current_y}) to year field at ({field_x}, {field_y})")
+                    
+                    # Move mouse with human-like movement
+                    human_like_mouse_move(current_x, current_y, field_x, field_y, duration=1.5)
+                    
+                    # Click on the field
+                    pyautogui.click()
+                    print("✅ Year field clicked with mouse movement!")
+                else:
+                    print("⚠️ Could not get field coordinates, using fallback...")
+                    self.actions.tap(year_input)
+                    
+            except Exception as e:
+                print(f"⚠️ Mouse movement failed, using fallback: {e}")
+                self.actions.tap(year_input)
+            
             time.sleep(random.uniform(0.3, 0.7))
             
             print(f"⌨️ STEP 5: Typing year...")
@@ -488,6 +862,45 @@ class GoogleSignupAutomation:
             # Select month using dropdown approach
             print(f"📅 STEP 6: Selecting month: {month}")
             month_dropdown = self.actions.find_element(By.ID, "month")
+            
+            # Move mouse to month dropdown with human-like movement
+            try:
+                print("🖱️ Moving mouse to month dropdown with human-like movement...")
+                
+                # Get dropdown coordinates
+                dropdown_rect = self.driver.execute_script("""
+                    let el = arguments[0];
+                    let r = el.getBoundingClientRect();
+                    return {
+                        abs_x: r.left + window.screenX + (window.outerWidth - window.innerWidth),
+                        abs_y: r.top + window.screenY + (window.outerHeight - window.innerHeight),
+                        width: r.width,
+                        height: r.height
+                    };
+                """, month_dropdown)
+                
+                if dropdown_rect:
+                    # Get random coordinates within dropdown
+                    dropdown_x = dropdown_rect["abs_x"] + random.randint(5, max(6, int(dropdown_rect["width"]) - 5))
+                    dropdown_y = dropdown_rect["abs_y"] + random.randint(5, max(6, int(dropdown_rect["height"]) - 5))
+                    
+                    # Get current mouse position
+                    current_x, current_y = pyautogui.position()
+                    print(f"📍 Moving from ({current_x}, {current_y}) to month dropdown at ({dropdown_x}, {dropdown_y})")
+                    
+                    # Move mouse with human-like movement
+                    human_like_mouse_move(current_x, current_y, dropdown_x, dropdown_y, duration=1.5)
+                    
+                    # Click on the dropdown
+                    pyautogui.click()
+                    print("✅ Month dropdown clicked with mouse movement!")
+                else:
+                    print("⚠️ Could not get dropdown coordinates, using fallback...")
+                    self.actions.tap(month_dropdown)
+                    
+            except Exception as e:
+                print(f"⚠️ Mouse movement failed, using fallback: {e}")
+                self.actions.tap(month_dropdown)
             
             # Convert month number to month name
             month_names = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -507,6 +920,45 @@ class GoogleSignupAutomation:
             # Select gender using dropdown approach
             print(f"👤 STEP 7: Selecting gender: {gender}")
             gender_dropdown_div = self.actions.find_element(By.ID, "gender")
+            
+            # Move mouse to gender dropdown with human-like movement
+            try:
+                print("🖱️ Moving mouse to gender dropdown with human-like movement...")
+                
+                # Get dropdown coordinates
+                dropdown_rect = self.driver.execute_script("""
+                    let el = arguments[0];
+                    let r = el.getBoundingClientRect();
+                    return {
+                        abs_x: r.left + window.screenX + (window.outerWidth - window.innerWidth),
+                        abs_y: r.top + window.screenY + (window.outerHeight - window.innerHeight),
+                        width: r.width,
+                        height: r.height
+                    };
+                """, gender_dropdown_div)
+                
+                if dropdown_rect:
+                    # Get random coordinates within dropdown
+                    dropdown_x = dropdown_rect["abs_x"] + random.randint(5, max(6, int(dropdown_rect["width"]) - 5))
+                    dropdown_y = dropdown_rect["abs_y"] + random.randint(5, max(6, int(dropdown_rect["height"]) - 5))
+                    
+                    # Get current mouse position
+                    current_x, current_y = pyautogui.position()
+                    print(f"📍 Moving from ({current_x}, {current_y}) to gender dropdown at ({dropdown_x}, {dropdown_y})")
+                    
+                    # Move mouse with human-like movement
+                    human_like_mouse_move(current_x, current_y, dropdown_x, dropdown_y, duration=1.5)
+                    
+                    # Click on the dropdown
+                    pyautogui.click()
+                    print("✅ Gender dropdown clicked with mouse movement!")
+                else:
+                    print("⚠️ Could not get dropdown coordinates, using fallback...")
+                    self.actions.tap(gender_dropdown_div)
+                    
+            except Exception as e:
+                print(f"⚠️ Mouse movement failed, using fallback: {e}")
+                self.actions.tap(gender_dropdown_div)
             
             # Convert gender to proper text
             gender_text = "Male" if gender.lower() == "male" else "Female"
@@ -530,9 +982,37 @@ class GoogleSignupAutomation:
             )
             
             if next_button:
-                print("🎯 STEP 9: Next button found! Clicking...")
-                self.actions.tap(next_button)
-                print("✅ Next button clicked, waiting for page transition...")
+                print("🎯 STEP 9: Next button found! Clicking with mouse movement...")
+                
+                # Click Next button with human-like mouse movement
+                try:
+                    # Get button coordinates and click with mouse movement
+                    button_rect = self.driver.execute_script("""
+                        let el = arguments[0];
+                        let r = el.getBoundingClientRect();
+                        return {
+                            abs_x: r.left + window.screenX + (window.outerWidth - window.innerWidth),
+                            abs_y: r.top + window.screenY + (window.outerHeight - window.innerHeight),
+                            width: r.width,
+                            height: r.height
+                        };
+                    """, next_button)
+                    
+                    # Get random coordinates within button
+                    button_x = button_rect["abs_x"] + random.randint(5, int(button_rect["width"]) - 5)
+                    button_y = button_rect["abs_y"] + random.randint(5, int(button_rect["height"]) - 5)
+                    
+                    # Move mouse with human-like movement and click
+                    current_x, current_y = pyautogui.position()
+                    human_like_mouse_move(current_x, current_y, button_x, button_y, duration=1.5)
+                    pyautogui.click()
+                    
+                    print("✅ Next button clicked with mouse movement!")
+                except Exception as e:
+                    print(f"⚠️ Mouse movement failed, using fallback: {e}")
+                    self.actions.tap(next_button)
+                    print("✅ Next button clicked via fallback!")
+                
                 time.sleep(random.uniform(1.5, 2.5))
                 print("✅ Basic info filled and submitted")
                 
@@ -607,7 +1087,46 @@ class GoogleSignupAutomation:
                 
                 # Fill username - FAST
                 print("👆 Activating username field...")
-                self.actions.tap(username_input)
+                
+                # Move mouse to username field with human-like movement
+                try:
+                    print("🖱️ Moving mouse to username field with human-like movement...")
+                    
+                    # Get field coordinates
+                    field_rect = self.driver.execute_script("""
+                        let el = arguments[0];
+                        let r = el.getBoundingClientRect();
+                        return {
+                            abs_x: r.left + window.screenX + (window.outerWidth - window.innerWidth),
+                            abs_y: r.top + window.screenY + (window.outerHeight - window.innerHeight),
+                            width: r.width,
+                            height: r.height
+                        };
+                    """, username_input)
+                    
+                    if field_rect:
+                        # Get random coordinates within field
+                        field_x = field_rect["abs_x"] + random.randint(5, max(6, int(field_rect["width"]) - 5))
+                        field_y = field_rect["abs_y"] + random.randint(5, max(6, int(field_rect["height"]) - 5))
+                        
+                        # Get current mouse position
+                        current_x, current_y = pyautogui.position()
+                        print(f"📍 Moving from ({current_x}, {current_y}) to username field at ({field_x}, {field_y})")
+                        
+                        # Move mouse with human-like movement
+                        human_like_mouse_move(current_x, current_y, field_x, field_y, duration=1.5)
+                        
+                        # Click on the field
+                        pyautogui.click()
+                        print("✅ Username field clicked with mouse movement!")
+                    else:
+                        print("⚠️ Could not get field coordinates, using fallback...")
+                        self.actions.tap(username_input)
+                        
+                except Exception as e:
+                    print(f"⚠️ Mouse movement failed, using fallback: {e}")
+                    self.actions.tap(username_input)
+                
                 time.sleep(random.uniform(0.2, 0.4))  # Faster
                 
                 print("⌨️ Typing username...")
@@ -622,9 +1141,37 @@ class GoogleSignupAutomation:
                 )
                 
                 if next_button:
-                    print("🎯 Next button found! Clicking...")
-                    self.actions.tap(next_button)
-                    print("✅ Next button clicked, waiting for page transition...")
+                    print("🎯 Next button found! Clicking with mouse movement...")
+                    
+                    # Click Next button with human-like mouse movement
+                    try:
+                        # Get button coordinates and click with mouse movement
+                        button_rect = self.driver.execute_script("""
+                            let el = arguments[0];
+                            let r = el.getBoundingClientRect();
+                            return {
+                                abs_x: r.left + window.screenX + (window.outerWidth - window.innerWidth),
+                                abs_y: r.top + window.screenY + (window.outerHeight - window.innerHeight),
+                                width: r.width,
+                                height: r.height
+                            };
+                        """, next_button)
+                        
+                        # Get random coordinates within button
+                        button_x = button_rect["abs_x"] + random.randint(5, int(button_rect["width"]) - 5)
+                        button_y = button_rect["abs_y"] + random.randint(5, int(button_rect["height"]) - 5)
+                        
+                        # Move mouse with human-like movement and click
+                        current_x, current_y = pyautogui.position()
+                        human_like_mouse_move(current_x, current_y, button_x, button_y, duration=1.5)
+                        pyautogui.click()
+                        
+                        print("✅ Next button clicked with mouse movement!")
+                    except Exception as e:
+                        print(f"⚠️ Mouse movement failed, using fallback: {e}")
+                        self.actions.tap(next_button)
+                        print("✅ Next button clicked via fallback!")
+                    
                     time.sleep(random.uniform(1.5, 2.5))
                     print("✅ New username created")
                     
@@ -680,9 +1227,37 @@ class GoogleSignupAutomation:
             )
             
             if next_button:
-                print("🎯 Next button found! Clicking...")
-                self.actions.tap(next_button)
-                print("✅ Next button clicked, waiting for page transition...")
+                print("🎯 Next button found! Clicking with mouse movement...")
+                
+                # Click Next button with human-like mouse movement
+                try:
+                    # Get button coordinates and click with mouse movement
+                    button_rect = self.driver.execute_script("""
+                        let el = arguments[0];
+                        let r = el.getBoundingClientRect();
+                        return {
+                            abs_x: r.left + window.screenX + (window.outerWidth - window.innerWidth),
+                            abs_y: r.top + window.screenY + (window.outerHeight - window.innerHeight),
+                            width: r.width,
+                            height: r.height
+                        };
+                    """, next_button)
+                    
+                    # Get random coordinates within button
+                    button_x = button_rect["abs_x"] + random.randint(5, int(button_rect["width"]) - 5)
+                    button_y = button_rect["abs_y"] + random.randint(5, int(button_rect["height"]) - 5)
+                    
+                    # Move mouse with human-like movement and click
+                    current_x, current_y = pyautogui.position()
+                    human_like_mouse_move(current_x, current_y, button_x, button_y, duration=1.5)
+                    pyautogui.click()
+                    
+                    print("✅ Next button clicked with mouse movement!")
+                except Exception as e:
+                    print(f"⚠️ Mouse movement failed, using fallback: {e}")
+                    self.actions.tap(next_button)
+                    print("✅ Next button clicked via fallback!")
+                
                 time.sleep(random.uniform(1.5, 2.5))
                 print("✅ Existing email submitted")
                 
@@ -780,14 +1355,92 @@ class GoogleSignupAutomation:
             try:
                 show_password_checkbox = self.actions.find_element(By.XPATH, "//input[@type='checkbox']", timeout=2)
                 print("👆 Clicking show password checkbox...")
-                self.actions.tap(show_password_checkbox)
+                
+                # Move mouse to show password checkbox with human-like movement
+                try:
+                    print("🖱️ Moving mouse to show password checkbox with human-like movement...")
+                    
+                    # Get checkbox coordinates
+                    checkbox_rect = self.driver.execute_script("""
+                        let el = arguments[0];
+                        let r = el.getBoundingClientRect();
+                        return {
+                            abs_x: r.left + window.screenX + (window.outerWidth - window.innerWidth),
+                            abs_y: r.top + window.screenY + (window.outerHeight - window.innerHeight),
+                            width: r.width,
+                            height: r.height
+                        };
+                    """, show_password_checkbox)
+                    
+                    if checkbox_rect:
+                        # Get random coordinates within checkbox
+                        checkbox_x = checkbox_rect["abs_x"] + random.randint(5, max(6, int(checkbox_rect["width"]) - 5))
+                        checkbox_y = checkbox_rect["abs_y"] + random.randint(5, max(6, int(checkbox_rect["height"]) - 5))
+                        
+                        # Get current mouse position
+                        current_x, current_y = pyautogui.position()
+                        print(f"📍 Moving from ({current_x}, {current_y}) to show password checkbox at ({checkbox_x}, {checkbox_y})")
+                        
+                        # Move mouse with human-like movement
+                        human_like_mouse_move(current_x, current_y, checkbox_x, checkbox_y, duration=1.5)
+                        
+                        # Click on the checkbox
+                        pyautogui.click()
+                        print("✅ Show password checkbox clicked with mouse movement!")
+                    else:
+                        print("⚠️ Could not get checkbox coordinates, using fallback...")
+                        self.actions.tap(show_password_checkbox)
+                        
+                except Exception as e:
+                    print(f"⚠️ Mouse movement failed, using fallback: {e}")
+                    self.actions.tap(show_password_checkbox)
+                
                 print("👁️ Showed password for visibility")
             except:
                 print("ℹ️  Show password checkbox not found")
 
             # Fill password - FAST
             print("👆 Activating password field...")
-            self.actions.tap(password_input)
+            
+            # Move mouse to password field with human-like movement
+            try:
+                print("🖱️ Moving mouse to password field with human-like movement...")
+                
+                # Get field coordinates
+                field_rect = self.driver.execute_script("""
+                    let el = arguments[0];
+                    let r = el.getBoundingClientRect();
+                    return {
+                        abs_x: r.left + window.screenX + (window.outerWidth - window.innerWidth),
+                        abs_y: r.top + window.screenY + (window.outerHeight - window.innerHeight),
+                        width: r.width,
+                        height: r.height
+                    };
+                """, password_input)
+                
+                if field_rect:
+                    # Get random coordinates within field
+                    field_x = field_rect["abs_x"] + random.randint(5, max(6, int(field_rect["width"]) - 5))
+                    field_y = field_rect["abs_y"] + random.randint(5, max(6, int(field_rect["height"]) - 5))
+                    
+                    # Get current mouse position
+                    current_x, current_y = pyautogui.position()
+                    print(f"📍 Moving from ({current_x}, {current_y}) to password field at ({field_x}, {field_y})")
+                    
+                    # Move mouse with human-like movement
+                    human_like_mouse_move(current_x, current_y, field_x, field_y, duration=1.5)
+                    
+                    # Click on the field
+                    pyautogui.click()
+                    print("✅ Password field clicked with mouse movement!")
+                else:
+                    print("⚠️ Could not get field coordinates, using fallback...")
+                    self.actions.tap(password_input)
+                    
+            except Exception as e:
+                print(f"⚠️ Mouse movement failed, using fallback: {e}")
+                self.actions.tap(password_input)
+            
             time.sleep(random.uniform(0.2, 0.4))  # Faster
             
             print("⌨️ Typing password...")
@@ -814,7 +1467,46 @@ class GoogleSignupAutomation:
             
             if confirm_input:
                 print("👆 Activating confirm password field...")
-                self.actions.tap(confirm_input)
+                
+                # Move mouse to confirm password field with human-like movement
+                try:
+                    print("🖱️ Moving mouse to confirm password field with human-like movement...")
+                    
+                    # Get field coordinates
+                    field_rect = self.driver.execute_script("""
+                        let el = arguments[0];
+                        let r = el.getBoundingClientRect();
+                        return {
+                            abs_x: r.left + window.screenX + (window.outerWidth - window.innerWidth),
+                            abs_y: r.top + window.screenY + (window.outerHeight - window.innerHeight),
+                            width: r.width,
+                            height: r.height
+                        };
+                    """, confirm_input)
+                    
+                    if field_rect:
+                        # Get random coordinates within field
+                        field_x = field_rect["abs_x"] + random.randint(5, max(6, int(field_rect["width"]) - 5))
+                        field_y = field_rect["abs_y"] + random.randint(5, max(6, int(field_rect["height"]) - 5))
+                        
+                        # Get current mouse position
+                        current_x, current_y = pyautogui.position()
+                        print(f"📍 Moving from ({current_x}, {current_y}) to confirm password field at ({field_x}, {field_y})")
+                        
+                        # Move mouse with human-like movement
+                        human_like_mouse_move(current_x, current_y, field_x, field_y, duration=1.5)
+                        
+                        # Click on the field
+                        pyautogui.click()
+                        print("✅ Confirm password field clicked with mouse movement!")
+                    else:
+                        print("⚠️ Could not get field coordinates, using fallback...")
+                        self.actions.tap(confirm_input)
+                        
+                except Exception as e:
+                    print(f"⚠️ Mouse movement failed, using fallback: {e}")
+                    self.actions.tap(confirm_input)
+                
                 time.sleep(random.uniform(0.2, 0.4))  # Faster
                 
                 print("⌨️ Typing confirm password...")
@@ -831,9 +1523,37 @@ class GoogleSignupAutomation:
             )
             
             if next_button:
-                print("🎯 Submit button found! Clicking...")
-                self.actions.tap(next_button)
-                print("✅ Submit button clicked, waiting for page transition...")
+                print("🎯 Submit button found! Clicking with mouse movement...")
+                
+                # Click Submit button with human-like mouse movement
+                try:
+                    # Get button coordinates and click with mouse movement
+                    button_rect = self.driver.execute_script("""
+                        let el = arguments[0];
+                        let r = el.getBoundingClientRect();
+                        return {
+                            abs_x: r.left + window.screenX + (window.outerWidth - window.innerWidth),
+                            abs_y: r.top + window.screenY + (window.outerHeight - window.innerHeight),
+                            width: r.width,
+                            height: r.height
+                        };
+                    """, next_button)
+                    
+                    # Get random coordinates within button
+                    button_x = button_rect["abs_x"] + random.randint(5, int(button_rect["width"]) - 5)
+                    button_y = button_rect["abs_y"] + random.randint(5, int(button_rect["height"]) - 5)
+                    
+                    # Move mouse with human-like movement and click
+                    current_x, current_y = pyautogui.position()
+                    human_like_mouse_move(current_x, current_y, button_x, button_y, duration=1.5)
+                    pyautogui.click()
+                    
+                    print("✅ Submit button clicked with mouse movement!")
+                except Exception as e:
+                    print(f"⚠️ Mouse movement failed, using fallback: {e}")
+                    self.actions.tap(next_button)
+                    print("✅ Submit button clicked via fallback!")
+                
                 time.sleep(random.uniform(1.5, 2.5))
                 print("✅ Password created and confirmed")
                 
@@ -1381,6 +2101,46 @@ class GoogleSignupAutomation:
                 
                 # Clear any existing value and type the number
                 phone_input.clear()
+                
+                # Move mouse to phone input field with human-like movement
+                try:
+                    print("🖱️ Moving mouse to phone input field with human-like movement...")
+                    
+                    # Get field coordinates
+                    field_rect = self.driver.execute_script("""
+                        let el = arguments[0];
+                        let r = el.getBoundingClientRect();
+                        return {
+                            abs_x: r.left + window.screenX + (window.outerWidth - window.innerWidth),
+                            abs_y: r.top + window.screenY + (window.outerHeight - window.innerHeight),
+                            width: r.width,
+                            height: r.height
+                        };
+                    """, phone_input)
+                    
+                    if field_rect:
+                        # Get random coordinates within field
+                        field_x = field_rect["abs_x"] + random.randint(5, max(6, int(field_rect["width"]) - 5))
+                        field_y = field_rect["abs_y"] + random.randint(5, max(6, int(field_rect["height"]) - 5))
+                        
+                        # Get current mouse position
+                        current_x, current_y = pyautogui.position()
+                        print(f"📍 Moving from ({current_x}, {current_y}) to phone input field at ({field_x}, {field_y})")
+                        
+                        # Move mouse with human-like movement
+                        human_like_mouse_move(current_x, current_y, field_x, field_y, duration=1.5)
+                        
+                        # Click on the field
+                        pyautogui.click()
+                        print("✅ Phone input field clicked with mouse movement!")
+                    else:
+                        print("⚠️ Could not get field coordinates, using fallback...")
+                        self.actions.tap(phone_input)
+                        
+                except Exception as e:
+                    print(f"⚠️ Mouse movement failed, using fallback: {e}")
+                    self.actions.tap(phone_input)
+                
                 self.actions.typing(phone_input, clean_mobile)
                 print(f"✅ Mobile number entered: {clean_mobile}")
                 
@@ -1424,7 +2184,37 @@ class GoogleSignupAutomation:
                         }, 100);
                     """)
                     
-                    self.actions.tap(next_button)
+                    # Click Next button with human-like mouse movement
+                    try:
+                        print("🎯 Next button found! Clicking with mouse movement...")
+                        
+                        # Get button coordinates and click with mouse movement
+                        button_rect = self.driver.execute_script("""
+                            let el = arguments[0];
+                            let r = el.getBoundingClientRect();
+                            return {
+                                abs_x: r.left + window.screenX + (window.outerWidth - window.innerWidth),
+                                abs_y: r.top + window.screenY + (window.outerHeight - window.innerHeight),
+                                width: r.width,
+                                height: r.height
+                            };
+                        """, next_button)
+                        
+                        # Get random coordinates within button
+                        button_x = button_rect["abs_x"] + random.randint(5, int(button_rect["width"]) - 5)
+                        button_y = button_rect["abs_y"] + random.randint(5, int(button_rect["height"]) - 5)
+                        
+                        # Move mouse with human-like movement and click
+                        current_x, current_y = pyautogui.position()
+                        human_like_mouse_move(current_x, current_y, button_x, button_y, duration=1.5)
+                        pyautogui.click()
+                        
+                        print("✅ Next button clicked with mouse movement!")
+                    except Exception as e:
+                        print(f"⚠️ Mouse movement failed, using fallback: {e}")
+                        self.actions.tap(next_button)
+                        print("✅ Next button clicked via fallback!")
+                    
                     print("✅ Next button tapped successfully")
                     
                     # 🔧 SESSION CONTEXT: Update after Next button click
@@ -1491,7 +2281,37 @@ class GoogleSignupAutomation:
                         )
                         
                         if next_button_otp:
-                            self.actions.tap(next_button_otp)
+                            # Click Next button with human-like mouse movement
+                            try:
+                                print("🎯 Next button found! Clicking with mouse movement...")
+                                
+                                # Get button coordinates and click with mouse movement
+                                button_rect = self.driver.execute_script("""
+                                    let el = arguments[0];
+                                    let r = el.getBoundingClientRect();
+                                    return {
+                                        abs_x: r.left + window.screenX + (window.outerWidth - window.innerWidth),
+                                        abs_y: r.top + window.screenY + (window.outerHeight - window.innerHeight),
+                                        width: r.width,
+                                        height: r.height
+                                    };
+                                """, next_button_otp)
+                                
+                                # Get random coordinates within button
+                                button_x = button_rect["abs_x"] + random.randint(5, int(button_rect["width"]) - 5)
+                                button_y = button_rect["abs_y"] + random.randint(5, int(button_rect["height"]) - 5)
+                                
+                                # Move mouse with human-like movement and click
+                                current_x, current_y = pyautogui.position()
+                                human_like_mouse_move(current_x, current_y, button_x, button_y, duration=1.5)
+                                pyautogui.click()
+                                
+                                print("✅ Next button clicked with mouse movement!")
+                            except Exception as e:
+                                print(f"⚠️ Mouse movement failed, using fallback: {e}")
+                                self.actions.tap(next_button_otp)
+                                print("✅ Next button clicked via fallback!")
+                            
                             print("✅ Next button tapped successfully after OTP")
                             self.actions.human_pause(0.8, 1.2)  # 🚀 FASTER
                         else:
