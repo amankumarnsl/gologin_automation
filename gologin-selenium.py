@@ -9,11 +9,11 @@ from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
 
 # Use the actual profile ID
-profile_id = "68aff3c19446e61259e7c087"  # Primary profile
+profile_id = "68b84865b16815cb4309701a"  # Primary profile
 
 # Initialize GoLogin
 gl = GoLogin({
-   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OGFmZTQ1YjljZWJhOWU1ODUxYjRkY2QiLCJ0eXBlIjoiZGV2Iiwiand0aWQiOiI2OGFmZTU4YTI0MjYyYTZhNWRkNGRmNzUifQ.o9KzAg9lmh0MxPOimC-dv9_hqtYpHUtEhGhMth9JK-o",
+   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OGI4NDZiMjYxMzcwMzY0NzU3YWU3N2EiLCJ0eXBlIjoiZGV2Iiwiand0aWQiOiI2OGI4NDg3YzYxMzcwMzY0NzU3ZDU1MTQifQ.lEN5_aPKqIjZGvGvcN7gBl5eFITp9L3AHuE4oVEDlbs",
    "profile_id": profile_id
    })
 
