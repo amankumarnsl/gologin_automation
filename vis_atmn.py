@@ -152,68 +152,78 @@ def human_like_mouse_move(start_x, start_y, end_x, end_y, duration=0.5):
     print("✅ Dynamic mouse movement completed!")
     print("Movement had varying speeds, zigzag patterns, and natural pauses!")
 
-options = webdriver.ChromeOptions()
-# On macOS, Chrome is usually here:
-options.binary_location = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+# Main execution logic
+if __name__ == "__main__":
+    options = webdriver.ChromeOptions()
+    # On macOS, Chrome is usually here:
+    options.binary_location = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 
-# Keep browser open - don't close automatically
-options.add_experimental_option("detach", True)
-options.add_experimental_option("excludeSwitches", ["enable-automation"])
-options.add_experimental_option('useAutomationExtension', False)
+    # Keep browser open - don't close automatically
+    options.add_experimental_option("detach", True)
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option('useAutomationExtension', False)
 
-driver = webdriver.Chrome(options=options)
-driver.get("https://www.google.com")
+    driver = webdriver.Chrome(options=options)
+    driver.get("https://www.google.com")
 
-time.sleep(3)  # Wait longer for page to fully load
+    time.sleep(3)  # Wait longer for page to fully load
 
-# ---- Step 1: Find and prepare search field ----
-search = driver.find_element(By.NAME, "q")
+    # ---- Step 1: Find and prepare search field ----
+    search = driver.find_element(By.NAME, "q")
 
-# Clear the search field first using Selenium
-search.clear()
-time.sleep(0.5)
+    # Clear the search field first using Selenium
+    search.clear()
+    time.sleep(0.5)
 
-# Focus the search field using Selenium first
-search.click()
-time.sleep(0.5)
+    # Focus the search field using Selenium first
+    search.click()
+    time.sleep(0.5)
 
-# Get coordinates for visual feedback
-rect = driver.execute_script("""
-    let el = arguments[0];
-    let r = el.getBoundingClientRect();
-    return {
-        abs_x: r.left + window.screenX + (window.outerWidth - window.innerWidth),
-        abs_y: r.top + window.screenY + (window.outerHeight - window.innerHeight),
-        width: r.width,
-        height: r.height
-    };
-""", search)
+    # Get coordinates for visual feedback
+    rect = driver.execute_script("""
+        let el = arguments[0];
+        let r = el.getBoundingClientRect();
+        return {
+            abs_x: r.left + window.screenX + (window.outerWidth - window.innerWidth),
+            abs_y: r.top + window.screenY + (window.outerHeight - window.innerHeight),
+            width: r.width,
+            height: r.height
+        };
+    """, search)
 
-target_x = int(rect["abs_x"] + rect["width"] / 2)
-target_y = int(rect["abs_y"] + rect["height"] / 2)
+    target_x = int(rect["abs_x"] + rect["width"] / 2)
+    target_y = int(rect["abs_y"] + rect["height"] / 2)
 
-print(f"Moving mouse to coordinates: ({target_x}, {target_y})")
+    print(f"Moving mouse to coordinates: ({target_x}, {target_y})")
 
-# Get current mouse position for natural movement
-current_x, current_y = pyautogui.position()
+    # Get current mouse position for natural movement
+    current_x, current_y = pyautogui.position()
 
-# Move mouse to search field using human-like curved path
-print("Moving mouse in human-like pattern...")
-human_like_mouse_move(current_x, current_y, target_x, target_y, duration=2.5)
-time.sleep(0.5)
+    # Move mouse to search field using human-like curved path
+    print("Moving mouse in human-like pattern...")
+    human_like_mouse_move(current_x, current_y, target_x, target_y, duration=2.5)
+    time.sleep(2)
+    human_like_mouse_move(target_x, target_y, 200, 300, duration=2.5)
+    time.sleep(2)
+    human_like_mouse_move(200, 300, 70, 800, duration=2.5)
+    time.sleep(2)
+    human_like_mouse_move(70, 800, 389, 200, duration=2.5)
+    time.sleep(2)
+    human_like_mouse_move(389, 200, 800, 402, duration=2.5)
+    time.sleep(2)
 
-# ---- Step 2: Type text using Selenium (more reliable) ----
-print("Typing 'OpenAI Pricing'...")
-search.send_keys("OpenAI Pricing")
-time.sleep(1)
+    # ---- Step 2: Type text using Selenium (more reliable) ----
+    print("Typing 'OpenAI Pricing'...")
+    search.send_keys("OpenAI Pricing")
+    time.sleep(1)
 
-# ---- Step 3: Hit Enter using Selenium ----
-print("Pressing Enter...")
-search.send_keys(Keys.RETURN)
+    # ---- Step 3: Hit Enter using Selenium ----
+    print("Pressing Enter...")
+    search.send_keys(Keys.RETURN)
 
-print("✅ Search executed with Enter, browser stays open")
-print("Search query: OpenAI Pricing")
-print("⚠️  Browser will remain open - you can manually close it when done")
+    print("✅ Search executed with Enter, browser stays open")
+    print("Search query: OpenAI Pricing")
+    print("⚠️  Browser will remain open - you can manually close it when done")
 
 
 
