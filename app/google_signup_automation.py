@@ -16,6 +16,7 @@ import pyautogui
 
 from app.helper.daisysms_client import DaisySMSClient
 from app.helper.actions import HumanActions
+from scroll import ScrollController
 
 # Import the human_like_mouse_move function
 try:
@@ -286,12 +287,70 @@ class GoogleSignupAutomation:
             print("✅ Successfully typed 'Create google account' and hit Enter!")
             time.sleep(random.uniform(3.0, 5.0))  # Wait for search results
             
-            # Step 7: Find and click the signup link (using your exact code)
-            print("🔗 Looking for signup link...")
-            signup_link = self.actions.find_element(By.XPATH, "//a[starts-with(@href, 'https://accounts.google.com/')]")
+            # Step 6.5: Add keyboard scrolling down 6 times after search results
+            print("⌨️ Adding keyboard scroll down 6 times after search results...")
+            try:
+                scroll_controller = ScrollController(self.driver)
+                
+                # Scroll down 6 times to position the page
+                print("📜 Scrolling down 6 times...")
+                scroll_controller.keyboard_scroll_down(6, show_progress=True)
+                
+                print("✅ Keyboard scroll sequence completed!")
+            except Exception as scroll_e:
+                print(f"⚠️ Keyboard scrolling failed: {scroll_e}")
             
-            print("👆 Clicking signup link...")
-            self.actions.tap(signup_link)
+            # Step 6.6: Find and click the "Google Accounts: Sign in" link with mouse movement
+            print("🔗 Looking for 'Google Accounts: Sign in' link...")
+            try:
+                # Wait for the link to appear after scrolling
+                time.sleep(random.uniform(1.0, 2.0))
+                
+                # Find the div with role="link" containing "Google Accounts: Sign in"
+                signup_link = self.actions.find_element(By.XPATH, "//div[@role='link' and contains(.//span, 'Google Accounts: Sign in')]")
+                
+                # Move mouse to signup link with human-like movement
+                print("🖱️ Moving mouse to 'Google Accounts: Sign in' link with human-like movement...")
+                
+                # Get link coordinates
+                link_rect = self.driver.execute_script("""
+                    let el = arguments[0];
+                    let r = el.getBoundingClientRect();
+                    return {
+                        abs_x: r.left + window.screenX + (window.outerWidth - window.innerWidth),
+                        abs_y: r.top + window.screenY + (window.outerHeight - window.innerHeight),
+                        width: r.width,
+                        height: r.height
+                    };
+                """, signup_link)
+                
+                if link_rect:
+                    # Get random coordinates within link
+                    link_x = link_rect["abs_x"] + random.randint(5, max(6, int(link_rect["width"]) - 5))
+                    link_y = link_rect["abs_y"] + random.randint(5, max(6, int(link_rect["height"]) - 5))
+                    
+                    # Get current mouse position
+                    current_x, current_y = pyautogui.position()
+                    print(f"📍 Moving from ({current_x}, {current_y}) to 'Google Accounts: Sign in' link at ({link_x}, {link_y})")
+                    
+                    # Move mouse with human-like movement
+                    human_like_mouse_move(current_x, current_y, link_x, link_y, duration=1.5)
+                    
+                    # Click on the link
+                    pyautogui.click()
+                    print("✅ 'Google Accounts: Sign in' link clicked with mouse movement!")
+                else:
+                    print("⚠️ Could not get link coordinates, using fallback...")
+                    self.actions.tap(signup_link)
+                    
+            except Exception as e:
+                print(f"⚠️ Mouse movement to 'Google Accounts: Sign in' failed: {e}")
+                # If the specific link fails, try to find any signup link
+                try:
+                    signup_link = self.actions.find_element(By.XPATH, "//a[starts-with(@href, 'https://accounts.google.com/')]")
+                    self.actions.tap(signup_link)
+                except:
+                    print("⚠️ Could not find any signup link")
             
             time.sleep(random.uniform(3.0, 5.0))  # Wait for page load
             
@@ -1554,7 +1613,7 @@ class GoogleSignupAutomation:
                     self.actions.tap(next_button)
                     print("✅ Submit button clicked via fallback!")
                 
-                time.sleep(random.uniform(1.5, 2.5))
+                time.sleep(random.uniform(0.5, 1.0))
                 print("✅ Password created and confirmed")
                 
                 # Verify we moved to the next page (Mobile verification page)
@@ -2154,8 +2213,8 @@ class GoogleSignupAutomation:
                     sessionStorage.setItem('session_context', JSON.stringify(context));
                 """)
                 
-                # Random pause as requested (2-4 seconds)
-                pause_duration = random.uniform(2, 4)
+                # Random pause as requested (2-5 seconds)
+                pause_duration = random.uniform(2, 5)
                 print(f"⏳ Waiting {pause_duration:.1f} seconds...")
                 time.sleep(pause_duration)
                 
@@ -2529,7 +2588,7 @@ class GoogleSignupAutomation:
             
             # Step 6: Handle mobile number verification
             print("📱 Waiting for mobile verification page...")
-            self.actions.human_pause(1.5, 2.0)  # 🚀 FASTER
+            self.actions.human_pause(0.5, 1.0)  # 🚀 FASTER
             
             # Handle phone verification
             self.handle_phone_verification()
@@ -2596,7 +2655,7 @@ class GoogleSignupAutomation:
             time.sleep(pause_time)
             print(f"⏱️  Paused for {pause_time:.1f} seconds")
             
-            # Step 3: Find and select the option
+            # Step 3: Find and select the option with realistic scrolling
             print(f"🔍 Looking for '{option_text}' in dropdown...")
             
             simple_selectors = [
@@ -2611,6 +2670,16 @@ class GoogleSignupAutomation:
                     print(f"🔍 Trying selector {i+1}: {selector}")
                     option_element = self.driver.find_element(By.XPATH, selector)
                     print(f"✅ Found option using selector {i+1}")
+                    
+                    # Step 3.5: Add realistic scrolling behavior
+                    print(f"📜 Adding realistic scrolling to {dropdown_name} dropdown...")
+                    try:
+                        # Scroll the option into view with realistic behavior
+                        self.driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", option_element)
+                        time.sleep(random.uniform(0.3, 0.7))  # Brief pause after scroll
+                        print(f"✅ Scrolled to {option_text} option")
+                    except Exception as scroll_e:
+                        print(f"⚠️ Scrolling failed: {scroll_e}")
                     
                     # Step 4: Click the option
                     print(f"👆 Clicking '{option_text}' option...")

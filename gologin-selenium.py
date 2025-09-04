@@ -533,16 +533,16 @@ try:
    
    # Configure data
    automation.set_data(
-       first_name="Rustam",
-       last_name="Sharma",  
-       day="4",
-       month="10",
-       year="1999",
+       first_name="Rahul",
+       last_name="Verma",  
+       day="12",
+       month="3",
+       year="2003",
        gender="male",
        email_method="new",
-       username="rustam123chddelh",
-       password="@rustam123",
-       mobile_number="+919842901794",
+       username="vrmarahul123del",
+       password="@verma123",
+       mobile_number="+918912983454",
        qr_save_path="google_signup_qr.png",
        network_save_path="sms_network_calls.json"
    )

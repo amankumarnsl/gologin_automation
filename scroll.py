@@ -21,9 +21,9 @@ class ScrollController:
         self._focus_page()
     
     def _focus_page(self):
-        """Focus on page body for keyboard input"""
+        """Focus on page body for keyboard input without clicking"""
         self.body = self.driver.find_element(By.TAG_NAME, "body")
-        self.body.click()
+        # Removed automatic clicking - just get the body element for keyboard input
     
     def _get_speed_timing(self, progress):
         """Get human-like speed timing based on progress (0.0 to 1.0)"""
